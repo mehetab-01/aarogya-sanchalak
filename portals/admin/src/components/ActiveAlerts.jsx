@@ -2,7 +2,7 @@
 // Pulls all alerts from Firebase: /hospitals/{HOSPITAL_ID}/alerts
 // Columns: Patient Name, Condition, ETA, Ambulance ID, Ack Status, Alert Status, Time
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 function toTitleCase(str) {
   if (!str) return '';
@@ -123,10 +123,16 @@ export default function ActiveAlerts() {
           (snapshot) => {
             const data = snapshot.val();
             if (!data) { setAlerts([]); return; }
-            const list = Object.entries(data)
-              .map(([id, val]) => ({ id, ...val }))
+            const all = Object.entries(data)
+              .map(([id, val]) => ({ id, ...val }));
+            // INCOMING first (newest-first within group), then others by time
+            const incoming = all
+              .filter(a => a.status === 'INCOMING')
               .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-            setAlerts(list);
+            const rest = all
+              .filter(a => a.status !== 'INCOMING')
+              .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+            setAlerts([...incoming, ...rest]);
             setError(null);
           },
           (err) => {
@@ -166,15 +172,18 @@ export default function ActiveAlerts() {
           <span style={{ fontSize: 'var(--font-md)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
             Active Alerts
           </span>
-          {alerts !== null && (
-            <span style={{
-              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
-              backgroundColor: alerts.length > 0 ? 'var(--color-critical-light)' : 'var(--color-bg-secondary)',
-              color: alerts.length > 0 ? 'var(--color-critical)' : 'var(--color-text-muted)',
-            }}>
-              {alerts.length}
-            </span>
-          )}
+          {alerts !== null && (() => {
+            const incomingCount = alerts.filter(a => a.status === 'INCOMING').length;
+            return (
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+                backgroundColor: incomingCount > 0 ? 'var(--color-critical-light)' : 'var(--color-bg-secondary)',
+                color: incomingCount > 0 ? 'var(--color-critical)' : 'var(--color-text-muted)',
+              }}>
+                {incomingCount > 0 ? `${incomingCount} incoming` : alerts.length}
+              </span>
+            );
+          })()}
         </div>
         <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
           Live · Firebase
@@ -223,8 +232,26 @@ export default function ActiveAlerts() {
               )}
 
               {/* Rows */}
-              {alerts !== null && alerts.map((alert, idx) => (
-                <tr key={alert.id} style={{
+              {alerts !== null && alerts.map((alert, idx) => {
+                // Insert a section divider between INCOMING and non-INCOMING rows
+                const prevWasIncoming = idx > 0 && alerts[idx - 1].status === 'INCOMING';
+                const thisIsNotIncoming = alert.status !== 'INCOMING';
+                const showDivider = prevWasIncoming && thisIsNotIncoming;
+                return (
+                <React.Fragment key={alert.id}>
+                {showDivider && (
+                  <tr>
+                    <td colSpan={7} style={{
+                      padding: '6px 16px',
+                      backgroundColor: 'var(--color-bg-secondary)',
+                      fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                      letterSpacing: '0.06em', color: 'var(--color-text-muted)',
+                    }}>
+                      Past Alerts
+                    </td>
+                  </tr>
+                )}
+                <tr style={{
                   borderBottom: idx < alerts.length - 1 ? '1px solid var(--color-border)' : 'none',
                   backgroundColor:
                     alert.condition === 'CRITICAL' && alert.status === 'INCOMING'
@@ -290,7 +317,9 @@ export default function ActiveAlerts() {
                     </span>
                   </td>
                 </tr>
-              ))}
+                </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

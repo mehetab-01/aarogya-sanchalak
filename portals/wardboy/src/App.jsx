@@ -4,7 +4,25 @@ import { ref, onValue, update } from "firebase/database";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { HOSPITAL_ID } from "../../shared/types";
 import { API_BASE_URL } from "../../shared/config";
-import { Bed, Clock, CheckCircle, MapPin, LogOut, Shield } from "lucide-react";
+import { Bed, Clock, CheckCircle, MapPin, LogOut, Shield, Wifi, Server, User, Activity } from "lucide-react";
+
+// Hardcoded palette (CSS vars may not load reliably at runtime)
+const C = {
+  brand:        "#0D6E56",
+  brandLight:   "#E1F5EE",
+  critical:     "#A32D2D",
+  criticalLight:"#FCEBEB",
+  stable:       "#0F6E56",
+  stableLight:  "#E1F5EE",
+  bgPrimary:    "#F8F9FA",
+  bgSecondary:  "#F1EFE8",
+  bgCard:       "#FFFFFF",
+  textPrimary:  "#0D0D0D",
+  textSecondary:"#5F5E5A",
+  textMuted:    "#888780",
+  border:       "#D3D1C7",
+  borderStrong: "#B5B3AA",
+};
 
 const conditionStyle = {
   CRITICAL: { bg: "var(--color-critical-light)", color: "var(--color-critical)" },
@@ -17,6 +35,131 @@ const TASK_LABELS = [
   "Set up vital monitoring equipment",
   "Ensure IV stand is in position",
 ];
+
+// ── Idle Dashboard ────────────────────────────────────────────────────────────
+function IdleDashboard({ lastAlert, backendOk }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto", padding: "32px 24px" }}>
+
+      {/* On Duty badge + clock */}
+      <div style={{
+        background: C.bgCard, border: `1px solid ${C.border}`,
+        borderRadius: 14, padding: "28px 24px", marginBottom: 16,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+      }}>
+        <span style={{
+          background: C.brandLight, color: C.brand,
+          fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+          textTransform: "uppercase", padding: "5px 16px", borderRadius: 999,
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.brand, display: "inline-block" }} />
+          On Duty
+        </span>
+        <p style={{
+          fontSize: 36, fontWeight: 600, color: C.textPrimary,
+          fontFamily: "'JetBrains Mono', monospace", margin: 0, letterSpacing: "0.02em",
+        }}>
+          {timeStr}
+        </p>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>{dateStr}</p>
+      </div>
+
+      {/* Last patient */}
+      <div style={{
+        background: C.bgCard, border: `1px solid ${C.border}`,
+        borderRadius: 14, padding: "20px 24px", marginBottom: 16,
+      }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, color: C.textMuted,
+          textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12,
+        }}>
+          Last Patient
+        </p>
+        {lastAlert ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 500, color: C.textPrimary, marginBottom: 4 }}>
+                {lastAlert.patientName ?? "Unknown"}
+              </p>
+              <p style={{ fontSize: 12, color: C.textMuted }}>
+                {lastAlert.condition} · {lastAlert.status}
+                {lastAlert.timestamp
+                  ? " · " + new Date(lastAlert.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+                  : ""}
+              </p>
+            </div>
+            <span style={{
+              background: lastAlert.wardAck ? C.brandLight : C.bgSecondary,
+              color: lastAlert.wardAck ? C.brand : C.textMuted,
+              fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
+              textTransform: "uppercase"
+            }}>
+              {lastAlert.wardAck ? "Bed Ready" : "Pending"}
+            </span>
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: C.textMuted }}>No recent activity</p>
+        )}
+      </div>
+
+      {/* System status */}
+      <div style={{
+        background: C.bgCard, border: `1px solid ${C.border}`,
+        borderRadius: 14, padding: "20px 24px",
+      }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, color: C.textMuted,
+          textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14,
+        }}>
+          System Status
+        </p>
+
+        {[
+          { icon: <Wifi size={14} color={C.stable} />, label: "Firebase", value: "Connected", ok: true },
+          { icon: <Server size={14} color={backendOk ? C.stable : C.critical} />, label: "Backend", value: backendOk ? "Connected" : "Unreachable", ok: backendOk },
+          { icon: <User size={14} color={C.brand} />, label: "Role", value: "Ward Boy on Duty", ok: true },
+        ].map(({ icon, label, value, ok }) => (
+          <div key={label} style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            paddingBottom: 10, marginBottom: 10,
+            borderBottom: `1px solid ${C.border}`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {icon}
+              <span style={{ fontSize: 13, color: C.textSecondary }}>{label}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: ok ? C.stable : C.critical, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: ok ? C.stable : C.critical, fontWeight: 500 }}>{value}</span>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Activity size={14} color={C.brand} />
+            <span style={{ fontSize: 13, color: C.textSecondary }}>Listening for alerts</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.brand, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: C.brand, fontWeight: 500 }}>Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
@@ -193,6 +336,8 @@ export default function App() {
   const [loading,     setLoading]     = useState(true);
   const [confirmed,   setConfirmed]   = useState(false);
   const [tasks,       setTasks]       = useState({ 0: false, 1: false, 2: false });
+  const [lastAlert,   setLastAlert]   = useState(null);
+  const [backendOk,   setBackendOk]   = useState(true);
 
   // Auth listener
   useEffect(() => {
@@ -212,17 +357,24 @@ export default function App() {
       (snap) => {
         const data = snap.val();
         if (data) {
-          const incoming = Object.entries(data).find(([, a]) => a.status === "INCOMING");
+          const entries = Object.entries(data).map(([id, a]) => ({ id, ...a }));
+          const incoming = entries
+            .filter(a => a.status === "INCOMING")
+            .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))[0];
           if (incoming) {
-            setAlertId(incoming[0]);
-            setAlert(incoming[1]);
-            if (incoming[1].wardAck) setConfirmed(true);
+            setAlertId(incoming.id);
+            setAlert(incoming);
+            setConfirmed(incoming.wardAck === true);
           } else {
             setAlert(null);
             setAlertId(null);
             setConfirmed(false);
             setTasks({ 0: false, 1: false, 2: false });
           }
+          const past = entries
+            .filter(a => a.status !== "INCOMING")
+            .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+          if (past.length > 0) setLastAlert(past[0]);
         } else {
           setAlert(null);
           setAlertId(null);
@@ -234,6 +386,18 @@ export default function App() {
     );
 
     return () => unsubscribe();
+  }, [user]);
+
+  // Backend health ping
+  useEffect(() => {
+    if (!user) return;
+    const check = () =>
+      fetch(`${API_BASE_URL}/api/beds/status`, { signal: AbortSignal.timeout(3000) })
+        .then(() => setBackendOk(true))
+        .catch(() => setBackendOk(false));
+    check();
+    const id = setInterval(check, 30000);
+    return () => clearInterval(id);
   }, [user]);
 
   async function handleConfirm() {
@@ -253,6 +417,11 @@ export default function App() {
       console.error("Ward ack failed:", e);
     }
   }
+
+  // Reset task checkboxes whenever the active alert changes
+  useEffect(() => {
+    setTasks({ 0: false, 1: false, 2: false });
+  }, [alertId]);
 
   function toggleTask(i) {
     setTasks(prev => ({ ...prev, [i]: !prev[i] }));
@@ -328,27 +497,9 @@ export default function App() {
           </div>
         )}
 
-        {/* No alert */}
+        {/* No alert — idle dashboard */}
         {!loading && !alert && (
-          <div style={{
-            minHeight: 320, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-          }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: "50%",
-              backgroundColor: "var(--color-stable-light)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              marginBottom: 12,
-            }}>
-              <CheckCircle size={24} style={{ color: "var(--color-stable)" }} />
-            </div>
-            <p style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 4 }}>
-              No Active Emergencies
-            </p>
-            <p style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
-              All clear — you will be notified when a patient is incoming
-            </p>
-          </div>
+          <IdleDashboard lastAlert={lastAlert} backendOk={backendOk} />
         )}
 
         {/* Active alert */}
