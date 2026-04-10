@@ -6,7 +6,6 @@ import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
-// TODO: Mehetab fills this in at hackathon start
 const firebaseConfig = {
   apiKey: "AIzaSyDt2_iNsq2ij24VOpDhYeqG0DzJThJv99g",
   authDomain: "aarogya-sanchalak.firebaseapp.com",
