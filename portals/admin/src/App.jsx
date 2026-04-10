@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import BedStatusCards from './components/BedStatusCards.jsx';
 import ActiveAlerts from './components/ActiveAlerts.jsx';
 import StaffLog from './components/StaffLog.jsx';
+import SimulateFlow from './components/SimulateFlow.jsx';
 import Login from './components/Login.jsx';
 import { useAuth } from './hooks/useAuth.js';
 
@@ -206,6 +207,12 @@ export default function AdminApp() {
         <section style={{ marginBottom: 24 }}>
           <SectionLabel>Bed Availability</SectionLabel>
           <BedStatusCards />
+        </section>
+
+        {/* ── Simulation ── */}
+        <section style={{ marginBottom: 24 }}>
+          <SectionLabel>Simulation</SectionLabel>
+          <SimulateFlow />
         </section>
 
         {/* ── Active Alerts ── */}

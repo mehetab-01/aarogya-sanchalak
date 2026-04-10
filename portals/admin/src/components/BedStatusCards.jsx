@@ -121,9 +121,48 @@ function BedCardSkeleton() {
   );
 }
 
+// Empty bed card shown when Firebase has responded but path has no data
+function BedCardEmpty({ type }) {
+  const label = BED_LABELS[type] ?? type.toUpperCase();
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-bg-card)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 10,
+      padding: 20,
+      boxShadow: '0 1px 3px 0 rgba(0,0,0,0.08)',
+      display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <BedIcon />
+          <span style={{
+            fontSize: 'var(--font-sm)', fontWeight: 600,
+            color: 'var(--color-text-secondary)',
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+          }}>
+            {label}
+          </span>
+        </div>
+      </div>
+      <div>
+        <p style={{ fontFamily: 'JetBrains Mono, monospace', lineHeight: 1, marginBottom: 4 }}>
+          <span style={{ fontSize: 'var(--font-2xl)', color: 'var(--color-text-primary)' }}>--</span>
+          <span style={{ fontSize: 'var(--font-lg)', color: 'var(--color-text-muted)' }}> / --</span>
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>No data</p>
+      </div>
+      <div style={{ height: 6, borderRadius: 999, backgroundColor: 'var(--color-bg-secondary)' }}>
+        <div style={{ height: '100%', borderRadius: 999, width: '0%', backgroundColor: 'var(--color-stable)' }} />
+      </div>
+    </div>
+  );
+}
+
 export default function BedStatusCards() {
-  const [beds,  setBeds]  = useState(null); // null = loading
-  const [error, setError] = useState(null);
+  const [beds,    setBeds]    = useState(null);  // null = not yet received
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
   useEffect(() => {
     let unsubscribe;
@@ -139,15 +178,21 @@ export default function BedStatusCards() {
         const bedsRef = ref(db, DB_PATHS.BEDS(HOSPITAL_ID));
         unsubscribe = onValue(
           bedsRef,
-          (snapshot) => { setBeds(snapshot.val()); setError(null); },
+          (snapshot) => {
+            setBeds(snapshot.val());
+            setLoading(false);
+            setError(null);
+          },
           (err) => {
             console.error('[BedStatusCards]', err);
             setError('Firebase connection error.');
+            setLoading(false);
           }
         );
       } catch (err) {
         console.error('[BedStatusCards] init error:', err);
         setError('Firebase not configured. Waiting for credentials…');
+        setLoading(false);
       }
     })();
 
@@ -166,7 +211,7 @@ export default function BedStatusCards() {
     );
   }
 
-  if (!beds) {
+  if (loading) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         {[1, 2, 3].map((i) => <BedCardSkeleton key={i} />)}
@@ -174,10 +219,18 @@ export default function BedStatusCards() {
     );
   }
 
+  if (!beds) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        {BED_ORDER.map((type) => <BedCardEmpty key={type} type={type} />)}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
       {BED_ORDER.map((type) =>
-        beds[type] ? <BedCard key={type} type={type} data={beds[type]} /> : null
+        beds[type] ? <BedCard key={type} type={type} data={beds[type]} /> : <BedCardEmpty key={type} type={type} />
       )}
     </div>
   );

@@ -98,10 +98,9 @@ async def trigger_alert(payload: AlertPayload, background_tasks: BackgroundTasks
             "doctorAck":          False,
             "nurseAck":           False,
             "wardAck":            False,
-            "escalatedToNurse":   False,
+            "escalatedToNurse":    False,
             "escalationStartedAt": now_ms,
-            "escalationFiredAt":  None,
-            "timestamp":          now_ms,
+            "timestamp":           now_ms,
         })
 
         # Increment emergency occupied count

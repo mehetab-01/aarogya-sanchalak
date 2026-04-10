@@ -17,9 +17,9 @@ const conditionStyle = {
 };
 
 const statusStyle = {
-  INCOMING:   { bg: 'var(--color-critical-light)', color: 'var(--color-critical)' },
-  ADMITTED:   { bg: 'var(--color-serious-light)',  color: 'var(--color-serious)' },
-  DISCHARGED: { bg: 'var(--color-stable-light)',   color: 'var(--color-stable)' },
+  INCOMING:   { bg: 'var(--color-serious-light)', color: 'var(--color-serious)' },
+  ADMITTED:   { bg: 'var(--color-stable-light)',  color: 'var(--color-stable)' },
+  DISCHARGED: { bg: 'var(--color-bg-secondary)',  color: 'var(--color-text-muted)' },
 };
 
 function ConditionBadge({ condition }) {
@@ -145,8 +145,7 @@ export default function ActiveAlerts() {
 
   const fmtTime = (ts) => {
     if (!ts) return '—';
-    const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -246,9 +245,11 @@ export default function ActiveAlerts() {
                   {/* Condition */}
                   <td style={{ padding: '12px 16px' }}>
                     <ConditionBadge condition={alert.condition} />
-                    {alert.vitals && (
+                    {(alert.vitals?.bp || alert.vitals?.pulse) && (
                       <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4, whiteSpace: 'nowrap' }}>
-                        {alert.vitals.bp} · {alert.vitals.pulse} bpm
+                        {alert.vitals?.bp ? `BP ${alert.vitals.bp}` : ''}
+                        {alert.vitals?.bp && alert.vitals?.pulse ? ' · ' : ''}
+                        {alert.vitals?.pulse ? `${alert.vitals.pulse} bpm` : ''}
                       </p>
                     )}
                   </td>

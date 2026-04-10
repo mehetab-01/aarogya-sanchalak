@@ -4,8 +4,8 @@ import toast from 'react-hot-toast';
 
 export default function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@neofuture.com'); // Placeholder standard email
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -65,7 +65,7 @@ export default function Login() {
                 border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-primary)',
                 fontSize: 'var(--font-base)', outline: 'none'
               }}
-              placeholder="admin@hospital.com"
+              placeholder="staff@hospital.in"
             />
           </div>
           <div>
@@ -99,9 +99,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div style={{ marginTop: 24, padding: 12, backgroundColor: 'var(--color-bg-secondary)', borderRadius: 8, fontSize: 11, color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          <strong>Note:</strong> Check your hackathon guide or backend logs if you don't know the demo credentials.
-        </div>
       </div>
     </div>
   );
