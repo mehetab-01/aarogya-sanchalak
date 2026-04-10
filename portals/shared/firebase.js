@@ -8,13 +8,13 @@ import { getAuth } from "firebase/auth";
 
 // TODO: Mehetab fills this in at hackathon start
 const firebaseConfig = {
-  apiKey: "FILL_ME",
-  authDomain: "FILL_ME",
-  databaseURL: "FILL_ME",
-  projectId: "FILL_ME",
-  storageBucket: "FILL_ME",
-  messagingSenderId: "FILL_ME",
-  appId: "FILL_ME",
+  apiKey: "AIzaSyDt2_iNsq2ij24VOpDhYeqG0DzJThJv99g",
+  authDomain: "aarogya-sanchalak.firebaseapp.com",
+  databaseURL: "https://aarogya-sanchalak-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "aarogya-sanchalak",
+  storageBucket: "aarogya-sanchalak.firebasestorage.app",
+  messagingSenderId: "713751207790",
+  appId: "1:713751207790:web:2450de7850cb9329206b7f"
 };
 
 const app = initializeApp(firebaseConfig);

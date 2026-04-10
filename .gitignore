@@ -17,7 +17,9 @@ dist/
 # firebase
 .firebase/
 firebase-debug.log
+.serviceaccountkey.json
 
 # os
 .DS_Store
 Thumbs.db
+backend/serviceAccountKey.json

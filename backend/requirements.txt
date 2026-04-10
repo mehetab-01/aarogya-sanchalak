@@ -1,6 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
 firebase-admin
-twilio
 python-dotenv
 pydantic
+twilio
