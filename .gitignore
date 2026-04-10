@@ -1,0 +1,23 @@
+# env files
+.env
+.env.local
+*.env
+
+# python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# node
+node_modules/
+dist/
+.vite/
+
+# firebase
+.firebase/
+firebase-debug.log
+
+# os
+.DS_Store
+Thumbs.db
