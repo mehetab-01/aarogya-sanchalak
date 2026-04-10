@@ -2,29 +2,66 @@
 // Mobile-first: large tap targets, minimal fields, one submit action
 // Owner: Sayali Bhagwat
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CONDITIONS } from '../../../shared/types.js';
-import { Truck, Zap, AlertTriangle } from 'lucide-react';
+import { Truck, Zap, AlertTriangle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
-const DEMO_DATA = {
-  patientName: 'Rahul Sharma',
-  age: '34',
-  condition: CONDITIONS.CRITICAL,
-  vitals: { bp: '90/60', pulse: '112' },
-  eta: '8',
-  notes: 'Road accident. Unconscious on arrival. Head trauma suspected.',
-};
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-const EMPTY_FORM = {
-  patientName: '',
-  age: '',
-  condition: null,
-  vitals: { bp: '', pulse: '' },
-  eta: '',
-  notes: '',
-};
+const DEMO_PATIENTS = [
+  {
+    patientName: 'Rahul Sharma',
+    age: '34',
+    condition: CONDITIONS.CRITICAL,
+    bp: '90/60',
+    pulse: '112',
+    eta: '8',
+    driverId: 'AMB-042',
+    notes: 'Road accident, unconscious on arrival',
+  },
+  {
+    patientName: 'Priya Mehta',
+    age: '28',
+    condition: CONDITIONS.SERIOUS,
+    bp: '110/70',
+    pulse: '95',
+    eta: '12',
+    driverId: 'AMB-017',
+    notes: 'Fall from height, suspected leg fracture',
+  },
+  {
+    patientName: 'Arjun Patil',
+    age: '56',
+    condition: CONDITIONS.CRITICAL,
+    bp: '80/50',
+    pulse: '130',
+    eta: '5',
+    driverId: 'AMB-031',
+    notes: 'Chest pain, suspected cardiac arrest',
+  },
+  {
+    patientName: 'Sunita Desai',
+    age: '42',
+    condition: CONDITIONS.SERIOUS,
+    bp: '130/85',
+    pulse: '88',
+    eta: '15',
+    driverId: 'AMB-009',
+    notes: 'Burns on arms and torso, conscious',
+  },
+  {
+    patientName: 'Vikram Nair',
+    age: '19',
+    condition: CONDITIONS.STABLE,
+    bp: '120/80',
+    pulse: '78',
+    eta: '20',
+    driverId: 'AMB-055',
+    notes: 'Minor head injury, fully conscious',
+  },
+];
 
 const CONDITION_CONFIG = {
   [CONDITIONS.CRITICAL]: {
@@ -50,61 +87,96 @@ const CONDITION_CONFIG = {
   },
 };
 
+const EMPTY = {
+  patientName: '',
+  age: '',
+  condition: null,
+  bp: '',
+  pulse: '',
+  eta: '',
+  driverId: '',
+  notes: '',
+};
+
 export default function PatientForm({ onAlertSent, user }) {
-  const [form, setForm]       = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(false);
-  const [demoLoaded, setDemoLoaded] = useState(false);
+  const [patientName, setPatientName] = useState('');
+  const [age,         setAge]         = useState('');
+  const [condition,   setCondition]   = useState(null);
+  const [bp,          setBp]          = useState('');
+  const [pulse,       setPulse]       = useState('');
+  const [eta,         setEta]         = useState('');
+  const [driverId,    setDriverId]    = useState('');
+  const [notes,       setNotes]       = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState(null);
 
-  function loadDemo() {
-    setForm(DEMO_DATA);
-    setDemoLoaded(true);
-    toast.success('Demo data loaded');
+  const lastDemoIndex = useRef(-1);
+
+  const hasAnyValue = patientName || age || condition || bp || pulse || eta || notes;
+
+  function loadDemoData() {
+    let nextIndex;
+    do {
+      nextIndex = Math.floor(Math.random() * DEMO_PATIENTS.length);
+    } while (nextIndex === lastDemoIndex.current && DEMO_PATIENTS.length > 1);
+
+    lastDemoIndex.current = nextIndex;
+    const p = DEMO_PATIENTS[nextIndex];
+
+    setPatientName(p.patientName);
+    setAge(p.age);
+    setCondition(p.condition);
+    setBp(p.bp);
+    setPulse(p.pulse);
+    setEta(p.eta);
+    setDriverId(p.driverId);
+    setNotes(p.notes);
+    setError(null);
+    toast.success(`Demo: ${p.patientName}`);
   }
 
-  function clearForm() {
-    setForm(EMPTY_FORM);
-    setDemoLoaded(false);
-  }
-
-  function setField(key, value) {
-    setForm(f => ({ ...f, [key]: value }));
-  }
-
-  function setVital(key, value) {
-    setForm(f => ({ ...f, vitals: { ...f.vitals, [key]: value } }));
+  function clearDemoData() {
+    setPatientName('');
+    setAge('');
+    setCondition(null);
+    setBp('');
+    setPulse('');
+    setEta('');
+    setDriverId('');
+    setNotes('');
+    setError(null);
+    lastDemoIndex.current = -1;
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.condition) {
-      toast.error('Please select a condition');
+    setError(null);
+
+    if (!patientName.trim() || !condition || !age || !eta) {
+      setError('Please fill all required fields');
       return;
     }
-    if (!form.patientName.trim()) {
-      toast.error('Patient name is required');
+    if (!bp.trim() || !pulse) {
+      setError('Please fill BP and Pulse');
       return;
     }
+
     setLoading(true);
 
-    const payload = {
-      patientName: form.patientName.trim(),
-      age: Number(form.age),
-      condition: form.condition,
-      vitals: {
-        bp: form.vitals.bp.trim(),
-        pulse: Number(form.vitals.pulse),
-      },
-      eta: Number(form.eta),
-      notes: form.notes.trim(),
-      driverId: 'AMB-042',
-      hospitalId: 'hospital1',
-    };
-
     try {
-      const res = await fetch('http://localhost:8000/api/alert/trigger', {
+      const res = await fetch(`${API_BASE_URL}/api/alert/trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          patientName: patientName.trim(),
+          age:         parseInt(age)   || 0,
+          condition,
+          bp:          bp.trim(),
+          pulse:       parseInt(pulse) || 0,
+          eta:         parseInt(eta)   || 0,
+          driverId:    driverId.trim() || 'AMB-001',
+          notes:       notes.trim(),
+        }),
       });
 
       if (!res.ok) {
@@ -114,16 +186,27 @@ export default function PatientForm({ onAlertSent, user }) {
 
       const data = await res.json();
       const alertId = data.alertId || data.alert_id || data.id;
-      if (!alertId) throw new Error('No alert ID returned');
-      
+      if (!alertId) throw new Error('No alert ID returned from server');
+
       toast.success('Alert transmitted');
-      onAlertSent(alertId, payload);
+      onAlertSent(alertId, {
+        patientName: patientName.trim(),
+        age:         parseInt(age) || 0,
+        condition,
+        bp:          bp.trim(),
+        pulse:       parseInt(pulse) || 0,
+        eta:         parseInt(eta) || 0,
+        driverId:    driverId.trim() || 'AMB-001',
+        notes:       notes.trim(),
+      });
 
     } catch (err) {
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        toast.error('Cannot connect to hospital server');
+      if (err?.message) {
+        setError(err.message);
+      } else if (typeof err === 'string') {
+        setError(err);
       } else {
-        toast.error(err.message);
+        setError('Failed to send alert. Check backend connection.');
       }
     } finally {
       setLoading(false);
@@ -132,7 +215,8 @@ export default function PatientForm({ onAlertSent, user }) {
 
   return (
     <div className="flex flex-col min-h-dvh max-w-[420px] mx-auto bg-[var(--color-bg-primary)]">
-      {/* Top bar (PortalLayout equivalent for driver narrow screen) */}
+
+      {/* Top bar */}
       <div className="bg-[var(--color-bg-card)] border-b border-[var(--color-border)] h-14 px-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <Truck size={18} className="text-[var(--color-serious)]" />
@@ -142,20 +226,20 @@ export default function PatientForm({ onAlertSent, user }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded bg-[var(--color-serious-light)] text-[var(--color-serious)]">
-            AMB-042
+            {driverId || 'AMB-001'}
           </span>
           <button
             type="button"
-            onClick={demoLoaded ? clearForm : loadDemo}
+            onClick={hasAnyValue ? clearDemoData : loadDemoData}
             className="flex items-center gap-1 text-[var(--font-xs)] font-medium bg-[var(--color-bg-secondary)] border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-2 py-1 rounded-[4px] hover:bg-gray-200"
           >
-            {demoLoaded ? 'Clear' : <><Zap size={12} className="text-amber-500"/> Demo</>}
+            {hasAnyValue ? <><X size={12} /> Clear</> : <><Zap size={12} className="text-amber-500" /> Demo</>}
           </button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 p-5 space-y-5">
-        
+
         {/* Patient Identity */}
         <div className="space-y-4">
           <div>
@@ -167,8 +251,8 @@ export default function PatientForm({ onAlertSent, user }) {
               type="text"
               required
               placeholder="Full name"
-              value={form.patientName}
-              onChange={e => setField('patientName', e.target.value)}
+              value={patientName}
+              onChange={e => setPatientName(e.target.value)}
               className={clsx(
                 "w-full bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
                 "border border-[var(--color-border)] rounded-[8px] px-4 min-h-[48px] text-[var(--font-md)] shadow-sm",
@@ -188,8 +272,8 @@ export default function PatientForm({ onAlertSent, user }) {
               min={0}
               max={120}
               placeholder="Years"
-              value={form.age}
-              onChange={e => setField('age', e.target.value)}
+              value={age}
+              onChange={e => setAge(e.target.value)}
               className={clsx(
                 "w-full font-data bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
                 "border border-[var(--color-border)] rounded-[8px] px-4 min-h-[48px] text-[var(--font-md)] shadow-sm",
@@ -207,14 +291,14 @@ export default function PatientForm({ onAlertSent, user }) {
           <div className="grid grid-cols-3 gap-2">
             {Object.values(CONDITIONS).map(cond => {
               const cfg = CONDITION_CONFIG[cond];
-              const isActive = form.condition === cond;
+              const isActive = condition === cond;
               return (
                 <button
                   key={cond}
                   type="button"
-                  onClick={() => setField('condition', cond)}
+                  onClick={() => setCondition(cond)}
                   className={clsx(
-                    'condition-btn flex flex-col items-center justify-center rounded-[8px] border-2 py-3 px-1 min-h-[96px] transition-all',
+                    'flex flex-col items-center justify-center rounded-[8px] border-2 py-3 px-1 min-h-[96px] transition-all',
                     isActive ? cfg.active : cfg.inactive
                   )}
                 >
@@ -237,8 +321,8 @@ export default function PatientForm({ onAlertSent, user }) {
               id="bp-input"
               type="text"
               placeholder="120/80"
-              value={form.vitals.bp}
-              onChange={e => setVital('bp', e.target.value)}
+              value={bp}
+              onChange={e => setBp(e.target.value)}
               className={clsx(
                 "w-full font-data bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
                 "border border-[var(--color-border)] rounded-[8px] px-4 min-h-[48px] text-[var(--font-md)] shadow-sm",
@@ -256,8 +340,8 @@ export default function PatientForm({ onAlertSent, user }) {
               min={0}
               max={300}
               placeholder="112"
-              value={form.vitals.pulse}
-              onChange={e => setVital('pulse', e.target.value)}
+              value={pulse}
+              onChange={e => setPulse(e.target.value)}
               className={clsx(
                 "w-full font-data bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
                 "border border-[var(--color-border)] rounded-[8px] px-4 min-h-[48px] text-[var(--font-md)] shadow-sm",
@@ -280,8 +364,8 @@ export default function PatientForm({ onAlertSent, user }) {
               min={1}
               max={120}
               placeholder="8"
-              value={form.eta}
-              onChange={e => setField('eta', e.target.value)}
+              value={eta}
+              onChange={e => setEta(e.target.value)}
               className={clsx(
                 "w-full font-data bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
                 "border border-[var(--color-border)] rounded-[8px] px-4 pr-16 min-h-[64px] text-[var(--font-2xl)] font-bold text-center shadow-sm",
@@ -303,8 +387,8 @@ export default function PatientForm({ onAlertSent, user }) {
             id="notes-input"
             rows={2}
             placeholder="Trauma, allergies, symptoms..."
-            value={form.notes}
-            onChange={e => setField('notes', e.target.value)}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
             className={clsx(
               "w-full bg-[var(--color-bg-card)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]",
               "border border-[var(--color-border)] rounded-[8px] px-4 py-3 min-h-[80px] text-[var(--font-base)] shadow-sm resize-none",
@@ -313,16 +397,26 @@ export default function PatientForm({ onAlertSent, user }) {
           />
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="bg-[var(--color-critical-light)] border border-[var(--color-critical)] rounded-[8px] px-4 py-3 flex items-start gap-3">
+            <AlertTriangle size={16} className="text-[var(--color-critical)] shrink-0 mt-0.5" />
+            <p className="text-[var(--color-critical)] text-[var(--font-sm)] font-medium leading-snug">
+              {error}
+            </p>
+          </div>
+        )}
+
         {/* Submit */}
-        <div className="pt-4 pb-6">
+        <div className="pb-6">
           <button
             type="submit"
             disabled={loading}
             className={clsx(
               "w-full select-none rounded-[10px] min-h-[64px] flex items-center justify-center gap-2",
               "text-white font-bold text-[var(--font-lg)] tracking-wide uppercase transition-all shadow-card",
-              loading 
-                ? "bg-gray-400 cursor-not-allowed" 
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
                 : "bg-[var(--color-critical)] hover:bg-[#7b1515] active:scale-[0.98]"
             )}
           >

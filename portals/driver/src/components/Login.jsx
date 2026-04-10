@@ -5,8 +5,8 @@ import { Shield, Eye, EyeOff, AlertTriangle, Truck } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail]       = useState('driver@hospital.in');
-  const [password, setPassword] = useState('driver123'); // Default hackathon pass
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
   const [showPass, setShowPass] = useState(false);
