@@ -1,216 +1,517 @@
-import React, { useState, useEffect } from 'react';
-import { db } from "../../shared/firebase";
+import { useState, useEffect } from "react";
+import { db, auth } from "../../shared/firebase";
 import { ref, onValue, update } from "firebase/database";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { HOSPITAL_ID } from "../../shared/types";
 import { API_BASE_URL } from "../../shared/config";
-import { CheckCircle, Clock, Bed } from "lucide-react";
+import { Bed, Clock, CheckCircle, MapPin, LogOut, Shield } from "lucide-react";
 
 const conditionStyle = {
-  CRITICAL: { bg: "var(--color-critical-light)", text: "var(--color-critical)" },
-  SERIOUS:  { bg: "var(--color-serious-light)",  text: "var(--color-serious)" },
-  STABLE:   { bg: "var(--color-stable-light)",   text: "var(--color-stable)" },
+  CRITICAL: { bg: "var(--color-critical-light)", color: "var(--color-critical)" },
+  SERIOUS:  { bg: "var(--color-serious-light)",  color: "var(--color-serious)"  },
+  STABLE:   { bg: "var(--color-stable-light)",   color: "var(--color-stable)"   },
 };
 
-export default function App() {
-  const [alert, setAlert] = useState(null);
-  const [alertId, setAlertId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
+const TASK_LABELS = [
+  "Clean and prepare the bed",
+  "Set up vital monitoring equipment",
+  "Ensure IV stand is in position",
+];
 
+// ── Spinner ──────────────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", backgroundColor: "var(--color-bg-primary)",
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%",
+        border: "4px solid var(--color-brand)",
+        borderTopColor: "transparent",
+        animation: "spin 0.7s linear infinite",
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+function LoginScreen() {
+  const [email,     setEmail]     = useState("");
+  const [password,  setPassword]  = useState("");
+  const [error,     setError]     = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+
+  async function handleLogin() {
+    if (!email || !password) {
+      setError("Please enter email and password");
+      return;
+    }
+    setSigningIn(true);
+    setError("");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch {
+      setError("Invalid credentials — try ward@aarogya.in");
+      setSigningIn(false);
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex",
+      alignItems: "center", justifyContent: "center",
+      background: "#F8F9FA", padding: "16px",
+    }}>
+      <div style={{
+        background: "white", border: "1px solid #D3D1C7",
+        borderRadius: "12px", padding: "32px",
+        width: "100%", maxWidth: "380px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      }}>
+
+        {/* Icon */}
+        <div style={{
+          width: "56px", height: "56px", borderRadius: "12px",
+          background: "#E1F5EE", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          margin: "0 auto 16px",
+        }}>
+          <Shield size={24} color="#0D6E56" />
+        </div>
+
+        {/* Title */}
+        <p style={{
+          textAlign: "center", fontSize: "11px", fontWeight: 500,
+          color: "#888780", letterSpacing: "0.08em",
+          textTransform: "uppercase", marginBottom: "4px",
+        }}>
+          Aarogya Sanchalak
+        </p>
+        <h1 style={{
+          textAlign: "center", fontSize: "20px", fontWeight: 500,
+          color: "#0D0D0D", marginBottom: "4px", margin: "0 0 4px",
+        }}>
+          Ward Boy Portal
+        </h1>
+        <p style={{
+          textAlign: "center", fontSize: "13px", color: "#888780",
+          marginBottom: "24px",
+        }}>
+          Sign in to access Aarogya Sanchalak
+        </p>
+
+        {/* Email */}
+        <label style={{
+          display: "block", fontSize: "11px", fontWeight: 500,
+          color: "#5F5E5A", textTransform: "uppercase",
+          letterSpacing: "0.05em", marginBottom: "6px",
+        }}>
+          Email
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="ward@aarogya.in"
+          onKeyDown={e => e.key === "Enter" && handleLogin()}
+          style={{
+            width: "100%", border: "1px solid #D3D1C7",
+            borderRadius: "8px", padding: "12px",
+            fontSize: "14px", marginBottom: "16px",
+            boxSizing: "border-box", outline: "none",
+          }}
+        />
+
+        {/* Password */}
+        <label style={{
+          display: "block", fontSize: "11px", fontWeight: 500,
+          color: "#5F5E5A", textTransform: "uppercase",
+          letterSpacing: "0.05em", marginBottom: "6px",
+        }}>
+          Password
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="••••••••"
+          onKeyDown={e => e.key === "Enter" && handleLogin()}
+          style={{
+            width: "100%", border: "1px solid #D3D1C7",
+            borderRadius: "8px", padding: "12px",
+            fontSize: "14px", marginBottom: "20px",
+            boxSizing: "border-box", outline: "none",
+          }}
+        />
+
+        {/* Error */}
+        {error && (
+          <p style={{
+            color: "#A32D2D", fontSize: "13px",
+            textAlign: "center", marginBottom: "12px",
+          }}>
+            {error}
+          </p>
+        )}
+
+        {/* Sign In button */}
+        <button
+          onClick={handleLogin}
+          disabled={signingIn}
+          style={{
+            width: "100%", padding: "14px",
+            background: signingIn ? "#888780" : "#0D6E56",
+            color: "white", border: "none",
+            borderRadius: "8px", fontSize: "15px",
+            fontWeight: 500, cursor: signingIn ? "not-allowed" : "pointer",
+            display: "block",
+          }}
+        >
+          {signingIn ? "Signing in..." : "Sign In"}
+        </button>
+
+        {/* Footer */}
+        <p style={{
+          textAlign: "center", fontSize: "12px",
+          color: "#888780", marginTop: "24px", marginBottom: 0,
+        }}>
+          Aarogya Sanchalak Clinical System · NEOFuture 2026
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Portal ───────────────────────────────────────────────────────────────
+export default function App() {
+  const [user,        setUser]        = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [alert,       setAlert]       = useState(null);
+  const [alertId,     setAlertId]     = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [confirmed,   setConfirmed]   = useState(false);
+  const [tasks,       setTasks]       = useState({ 0: false, 1: false, 2: false });
+
+  // Auth listener
   useEffect(() => {
-    const alertsRef = ref(db, `hospitals/${HOSPITAL_ID}/alerts`);
-    const unsubscribe = onValue(alertsRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        const incoming = Object.entries(data).find(([id, a]) => a.status === "INCOMING");
-        if (incoming) {
-          setAlertId(incoming[0]);
-          setAlert(incoming[1]);
-          if (incoming[1].wardAck === true) {
-            setConfirmed(true);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // Alerts listener (only active when logged in)
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onValue(
+      ref(db, `/hospitals/${HOSPITAL_ID}/alerts`),
+      (snap) => {
+        const data = snap.val();
+        if (data) {
+          const incoming = Object.entries(data).find(([, a]) => a.status === "INCOMING");
+          if (incoming) {
+            setAlertId(incoming[0]);
+            setAlert(incoming[1]);
+            if (incoming[1].wardAck) setConfirmed(true);
+          } else {
+            setAlert(null);
+            setAlertId(null);
+            setConfirmed(false);
+            setTasks({ 0: false, 1: false, 2: false });
           }
         } else {
           setAlert(null);
           setAlertId(null);
+          setConfirmed(false);
+          setTasks({ 0: false, 1: false, 2: false });
         }
-      } else {
-        setAlert(null);
-        setAlertId(null);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
-  const handleConfirm = async () => {
+  async function handleConfirm() {
     if (!alertId) return;
     try {
-      await update(ref(db, `hospitals/${HOSPITAL_ID}/alerts/${alertId}`), {
+      await update(ref(db, `/hospitals/${HOSPITAL_ID}/alerts/${alertId}`), {
         wardAck: true,
-        wardAckAt: Date.now()
+        wardAckAt: Date.now(),
       });
       await fetch(`${API_BASE_URL}/api/alert/ward-ack`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alertId })
+        body: JSON.stringify({ alertId }),
       });
       setConfirmed(true);
-    } catch (error) {
-      console.error("Error acknowledging alert:", error);
+    } catch (e) {
+      console.error("Ward ack failed:", e);
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "var(--color-bg-primary)" }}>
-        <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--color-brand)", borderTopColor: "transparent" }}></div>
-      </div>
-    );
   }
 
-  if (!alert) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "var(--color-bg-primary)" }}>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ background: "var(--color-stable)" }} />
-          <span className="text-base" style={{ color: "var(--color-text-muted)" }}>
-            No active emergencies
-          </span>
-        </div>
-      </div>
-    );
+  function toggleTask(i) {
+    setTasks(prev => ({ ...prev, [i]: !prev[i] }));
   }
 
-  const { patientName, condition, eta } = alert;
+  // ── Auth states ────────────────────────────────────────────────────────────
+  if (authLoading) return <Spinner />;
+  if (!user)       return <LoginScreen />;
+
+  const allTasksDone  = tasks[0] && tasks[1] && tasks[2];
+  const remaining     = 3 - Object.values(tasks).filter(Boolean).length;
+  const cStyle        = conditionStyle[alert?.condition] ?? conditionStyle.STABLE;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-bg-primary)" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--color-bg-primary)" }}>
+
+      {/* ── Header ── */}
       <div style={{
-        background: "var(--color-bg-card)",
+        backgroundColor: "var(--color-bg-card)",
         borderBottom: "1px solid var(--color-border)",
         padding: "16px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between"
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        position: "sticky", top: 0, zIndex: 10,
       }}>
         <div>
           <p style={{
-            fontSize: "var(--font-xs)",
+            fontSize: "var(--font-xs)", fontWeight: 500,
             color: "var(--color-text-muted)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: "2px"
+            textTransform: "uppercase", letterSpacing: "0.1em",
+            marginBottom: 2,
           }}>
             Aarogya Sanchalak
           </p>
-          <h1 style={{
-            fontSize: "var(--font-md)",
-            fontWeight: 500,
-            color: "var(--color-text-primary)"
-          }}>
+          <p style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-text-primary)" }}>
             Ward Boy Portal
-          </h1>
+          </p>
         </div>
-        <span style={{
-          background: "var(--color-brand-light)",
-          color: "var(--color-brand)",
-          padding: "4px 12px",
-          borderRadius: "999px",
-          fontSize: "var(--font-xs)",
-          fontWeight: 500
-        }}>
-          Ward Boy
-        </span>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{
+            backgroundColor: "var(--color-brand-light)",
+            color: "var(--color-brand)",
+            fontSize: "var(--font-xs)", fontWeight: 500,
+            padding: "4px 12px", borderRadius: 999,
+          }}>
+            Ward Boy
+          </span>
+          <button
+            onClick={() => signOut(auth)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", padding: 4,
+            }}
+            title="Logout"
+          >
+            <LogOut size={16} style={{ color: "var(--color-text-muted)" }} />
+          </button>
+        </div>
       </div>
 
-      <div className="max-w-sm mx-auto px-6 py-8">
-        <div className="p-6 mb-4 border" style={{ background: "var(--color-bg-card)", borderColor: "var(--color-border)", borderRadius: "10px" }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Bed size={20} style={{ color: "var(--color-brand)" }} />
-            <span className="font-medium uppercase tracking-wide" style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)" }}>
-              Incoming Patient
-            </span>
+      {/* ── Content ── */}
+      <div style={{ maxWidth: 512, margin: "0 auto", padding: "32px 24px" }}>
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: "50%",
+              border: "4px solid var(--color-brand)",
+              borderTopColor: "transparent",
+              animation: "spin 0.7s linear infinite",
+            }} />
           </div>
-          
-          <h2 className="font-medium mt-3" style={{ fontSize: "var(--font-lg)", color: "var(--color-text-primary)" }}>
-            {patientName || "Unknown Patient"}
-          </h2>
-          
-          <div className="mt-2">
-            <span style={{
-              background: conditionStyle[condition]?.bg,
-              color: conditionStyle[condition]?.text,
-              padding: "2px 12px",
-              borderRadius: "999px",
-              fontSize: "var(--font-xs)",
-              fontWeight: 500,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              display: "inline-block"
+        )}
+
+        {/* No alert */}
+        {!loading && !alert && (
+          <div style={{
+            minHeight: 320, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+          }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%",
+              backgroundColor: "var(--color-stable-light)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginBottom: 12,
             }}>
-              {condition || "UNKNOWN"}
-            </span>
+              <CheckCircle size={24} style={{ color: "var(--color-stable)" }} />
+            </div>
+            <p style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 4 }}>
+              No Active Emergencies
+            </p>
+            <p style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
+              All clear — you will be notified when a patient is incoming
+            </p>
           </div>
-          
-          <hr className="my-4 border-t" style={{ borderColor: "var(--color-border)" }} />
-          
-          <div className="flex items-center gap-2">
-            <Clock size={16} style={{ color: "var(--color-text-muted)" }} />
-            <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>
-              Arriving in <span className="font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}>{eta}</span> minutes
-            </span>
-          </div>
-        </div>
+        )}
 
-        <div className="p-5 mb-6 border" style={{ background: "var(--color-brand-light)", borderColor: "var(--color-brand)", borderRadius: "10px" }}>
-          <p className="uppercase tracking-wide mb-2" style={{ fontSize: "var(--font-xs)", color: "var(--color-text-muted)" }}>
-            Assigned Location
-          </p>
-          <p className="font-medium" style={{ fontSize: "var(--font-lg)", color: "var(--color-brand)" }}>
-            Emergency Bay 1
-          </p>
-          <p className="mt-1" style={{ fontSize: "var(--font-xs)", color: "var(--color-text-muted)" }}>
-            Prepare bed, trolley and monitoring equipment
-          </p>
-        </div>
+        {/* Active alert */}
+        {!loading && alert && (
+          <>
+            {/* 1 — Patient card */}
+            <div style={{
+              backgroundColor: "var(--color-bg-card)",
+              border: "1px solid var(--color-border)",
+              borderRadius: 10, padding: 20, marginBottom: 16,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Bed size={16} style={{ color: "var(--color-brand)" }} />
+                <span style={{
+                  fontSize: "var(--font-xs)", fontWeight: 500,
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase", letterSpacing: "0.08em",
+                }}>
+                  Incoming Patient
+                </span>
+              </div>
 
-        <div className="mb-6">
-          <div className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: "var(--color-border)" }}>
-            <div className="w-4 h-4 border rounded flex-shrink-0" style={{ background: "#ffffff", borderColor: "var(--color-border)", borderRadius: "4px" }}></div>
-            <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-primary)" }}>Clean and prepare the bed</span>
-          </div>
-          <div className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: "var(--color-border)" }}>
-            <div className="w-4 h-4 border rounded flex-shrink-0" style={{ background: "#ffffff", borderColor: "var(--color-border)", borderRadius: "4px" }}></div>
-            <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-primary)" }}>Set up vital monitoring equipment</span>
-          </div>
-          <div className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: "var(--color-border)" }}>
-            <div className="w-4 h-4 border rounded flex-shrink-0" style={{ background: "#ffffff", borderColor: "var(--color-border)", borderRadius: "4px" }}></div>
-            <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-primary)" }}>Ensure IV stand is in position</span>
-          </div>
-        </div>
+              <p style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 8 }}>
+                {alert.patientName ?? "Unknown"}
+              </p>
 
-        <div className="mt-4">
-          {confirmed ? (
-            <div className="p-5 flex items-center gap-3 border" style={{ background: "var(--color-stable-light)", borderColor: "var(--color-stable)", borderRadius: "10px" }}>
-              <CheckCircle size={22} style={{ color: "var(--color-stable)" }} />
-              <div>
-                <p className="font-medium" style={{ color: "var(--color-stable)" }}>Bed Confirmed Ready</p>
-                <p className="mt-0.5" style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>Patient can be received</p>
+              <span style={{
+                display: "inline-block",
+                backgroundColor: cStyle.bg, color: cStyle.color,
+                padding: "2px 12px", borderRadius: 999,
+                fontSize: "var(--font-xs)", fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.05em",
+              }}>
+                {alert.condition ?? "—"}
+              </span>
+
+              <hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "12px 0" }} />
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={14} style={{ color: "var(--color-text-muted)" }} />
+                <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>
+                  Arriving in{" "}
+                  <span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                    {alert.eta ?? "—"}
+                  </span>
+                  {" "}minutes
+                </span>
               </div>
             </div>
-          ) : (
-            <button 
-              onClick={handleConfirm}
-              className="w-full py-4 font-medium text-white transition-colors"
-              style={{ background: "var(--color-brand)", borderRadius: "10px" }}
-              onMouseOver={(e) => e.target.style.background = "var(--color-brand-dark)"}
-              onMouseOut={(e) => e.target.style.background = "var(--color-brand)"}
-            >
-              Confirm Bed Ready
-            </button>
-          )}
-        </div>
+
+            {/* 2 — Assigned location card */}
+            <div style={{
+              backgroundColor: "var(--color-brand-light)",
+              border: "1px solid var(--color-brand)",
+              borderRadius: 10, padding: 20, marginBottom: 16,
+            }}>
+              <p style={{
+                fontSize: "var(--font-xs)", fontWeight: 500,
+                color: "var(--color-brand)",
+                textTransform: "uppercase", letterSpacing: "0.08em",
+                marginBottom: 8,
+              }}>
+                Assigned Location
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <MapPin size={16} style={{ color: "var(--color-brand)" }} />
+                <span style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-brand)" }}>
+                  Emergency Bay 1
+                </span>
+              </div>
+              <p style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>
+                Prepare bed, trolley and monitoring equipment
+              </p>
+            </div>
+
+            {/* 3 — Checklist */}
+            <p style={{
+              fontSize: "var(--font-xs)", fontWeight: 500,
+              color: "var(--color-text-secondary)",
+              textTransform: "uppercase", letterSpacing: "0.08em",
+              marginBottom: 12,
+            }}>
+              Preparation Checklist
+            </p>
+
+            {TASK_LABELS.map((label, i) => (
+              <div
+                key={i}
+                onClick={() => toggleTask(i)}
+                style={{
+                  backgroundColor: "var(--color-bg-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: 10, padding: 16, marginBottom: 8,
+                  display: "flex", alignItems: "center", gap: 12,
+                  cursor: "pointer", userSelect: "none",
+                }}
+              >
+                {/* Checkbox */}
+                <div style={{
+                  width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                  border: tasks[i] ? "2px solid var(--color-brand)" : "2px solid var(--color-border)",
+                  backgroundColor: tasks[i] ? "var(--color-brand)" : "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.15s",
+                }}>
+                  {tasks[i] && (
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+
+                <span style={{
+                  fontSize: "var(--font-sm)",
+                  color: tasks[i] ? "var(--color-text-muted)" : "var(--color-text-primary)",
+                  textDecoration: tasks[i] ? "line-through" : "none",
+                  transition: "all 0.15s",
+                }}>
+                  {label}
+                </span>
+              </div>
+            ))}
+
+            {/* 4 — Confirm / confirmed */}
+            <div style={{ marginTop: 16 }}>
+              {confirmed ? (
+                <div style={{
+                  backgroundColor: "var(--color-stable-light)",
+                  border: "1px solid var(--color-stable)",
+                  borderRadius: 10, padding: 20,
+                  display: "flex", alignItems: "center", gap: 12,
+                }}>
+                  <CheckCircle size={22} style={{ color: "var(--color-stable)", flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: "var(--font-md)", fontWeight: 500, color: "var(--color-stable)" }}>
+                      Bed Confirmed Ready
+                    </p>
+                    <p style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                      Patient can be received
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={allTasksDone ? handleConfirm : undefined}
+                  style={{
+                    width: "100%", padding: "16px",
+                    borderRadius: 10, border: "none",
+                    fontSize: "var(--font-sm)", fontWeight: 500,
+                    cursor: allTasksDone ? "pointer" : "not-allowed",
+                    backgroundColor: allTasksDone ? "var(--color-brand)" : "var(--color-bg-secondary)",
+                    color: allTasksDone ? "#fff" : "var(--color-text-muted)",
+                    transition: "background-color 0.15s",
+                  }}
+                >
+                  {allTasksDone
+                    ? "Confirm Bed Ready"
+                    : `Complete all tasks first (${remaining} remaining)`}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-brand:           #0D6E56;
+  --color-brand-dark:      #0a5a45;
+  --color-brand-light:     #E1F5EE;
+  --color-critical:        #A32D2D;
+  --color-critical-light:  #FCEBEB;
+  --color-serious:         #854F0B;
+  --color-serious-light:   #FAEEDA;
+  --color-stable:          #0F6E56;
+  --color-stable-light:    #E1F5EE;
+  --color-bg-primary:      #F8F9FA;
+  --color-bg-secondary:    #F1EFE8;
+  --color-bg-card:         #FFFFFF;
+  --color-text-primary:    #0D0D0D;
+  --color-text-secondary:  #5F5E5A;
+  --color-text-muted:      #888780;
+  --color-border:          #D3D1C7;
+  --color-border-strong:   #B5B3AA;
+  --font-mono:  'JetBrains Mono', monospace;
+  --font-xs:    11px;
+  --font-sm:    13px;
+  --font-base:  15px;
+  --font-md:    17px;
+  --font-lg:    20px;
+  --font-xl:    24px;
+  --font-2xl:   30px;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -10,4 +38,6 @@ body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
