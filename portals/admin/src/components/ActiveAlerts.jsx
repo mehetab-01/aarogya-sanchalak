@@ -3,6 +3,7 @@
 // Columns: Patient Name, Condition, ETA, Ambulance ID, Ack Status, Alert Status, Time
 
 import React, { useEffect, useState } from 'react';
+import EscalationTimer from './EscalationTimer.jsx';
 
 function toTitleCase(str) {
   if (!str) return '';
@@ -77,7 +78,7 @@ function AckCell({ doctorAck, nurseAck, wardAck }) {
 function SkeletonRow() {
   return (
     <tr>
-      {[180, 120, 60, 90, 110, 80, 60].map((w, i) => (
+      {[180, 120, 60, 90, 110, 160, 80, 60].map((w, i) => (
         <td key={i} style={{ padding: '12px 16px' }}>
           <div className="animate-pulse" style={{
             height: 14, width: w,
@@ -211,6 +212,7 @@ export default function ActiveAlerts() {
                 <TH>ETA</TH>
                 <TH>Ambulance ID</TH>
                 <TH>Acknowledgements</TH>
+                <TH>Escalation</TH>
                 <TH>Status</TH>
                 <TH>Time</TH>
               </tr>
@@ -222,7 +224,7 @@ export default function ActiveAlerts() {
               {/* Empty */}
               {alerts !== null && alerts.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{
+                  <td colSpan={8} style={{
                     padding: '40px 16px', textAlign: 'center',
                     fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)',
                   }}>
@@ -233,6 +235,7 @@ export default function ActiveAlerts() {
 
               {/* Rows */}
               {alerts !== null && alerts.map((alert, idx) => {
+                const showEscalation = alert.status === 'INCOMING' && alert.escalationStartedAt;
                 // Insert a section divider between INCOMING and non-INCOMING rows
                 const prevWasIncoming = idx > 0 && alerts[idx - 1].status === 'INCOMING';
                 const thisIsNotIncoming = alert.status !== 'INCOMING';
@@ -241,7 +244,7 @@ export default function ActiveAlerts() {
                 <React.Fragment key={alert.id}>
                 {showDivider && (
                   <tr>
-                    <td colSpan={7} style={{
+                    <td colSpan={8} style={{
                       padding: '6px 16px',
                       backgroundColor: 'var(--color-bg-secondary)',
                       fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
@@ -304,6 +307,18 @@ export default function ActiveAlerts() {
                     nurseAck={alert.nurseAck}
                     wardAck={alert.wardAck}
                   />
+
+                  {/* Escalation timer */}
+                  <td style={{ padding: '12px 16px', minWidth: 200 }}>
+                    {showEscalation ? (
+                      <EscalationTimer
+                        escalationStartedAt={alert.escalationStartedAt}
+                        doctorAck={alert.doctorAck}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>—</span>
+                    )}
+                  </td>
 
                   {/* Status */}
                   <td style={{ padding: '12px 16px' }}>
