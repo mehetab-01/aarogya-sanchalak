@@ -3,7 +3,7 @@ import { db } from "../../shared/firebase";
 import { ref, onValue, update } from "firebase/database";
 import { HOSPITAL_ID } from "../../shared/types";
 import { API_BASE_URL } from "../../shared/config";
-import { CheckCircle, AlertTriangle, Wifi, Server, User, Activity } from "lucide-react";
+import { CheckCircle, AlertTriangle, Wifi, Server, User, Activity, Droplets } from "lucide-react";
 
 const C = {
   brand:         "#0D6E56",
@@ -31,13 +31,27 @@ const conditionColors = {
   STABLE:   { bg: C.stableLight,   text: C.stable },
 };
 
-const TASKS = [
+const BASE_TASKS = [
   "Prepare stretcher at emergency bay",
   "Set up IV drip station",
   "Alert OT team",
-  "Prepare blood type kit",
   "Notify on-duty anaesthetist",
 ];
+
+const BLOOD_TASKS = {
+  Moderate: ["Prepare blood type kit — cross-match required"],
+  Severe:   [
+    "Prepare blood type kit — EMERGENCY cross-match",
+    "Activate massive transfusion protocol",
+    "Request O- universal donor blood from blood bank",
+  ],
+};
+
+function getTasks(alert) {
+  const base = [...BASE_TASKS];
+  const extra = BLOOD_TASKS[alert?.bloodLoss] ?? [];
+  return [...base, ...extra];
+}
 
 // ── Idle Dashboard ────────────────────────────────────────────────────────────
 function IdleDashboard({ lastAlert, backendOk }) {
@@ -237,9 +251,10 @@ export default function App() {
     setChecked(prev => ({ ...prev, [idx]: !prev[idx] }));
   }
 
+  const tasks = getTasks(alert);
   // allDone: every task index has been explicitly set to true
-  const allDone = TASKS.every((_, idx) => checked[idx] === true);
-  const checkedCount = TASKS.filter((_, idx) => checked[idx] === true).length;
+  const allDone = tasks.every((_, idx) => checked[idx] === true);
+  const checkedCount = tasks.filter((_, idx) => checked[idx] === true).length;
 
   async function handleConfirm() {
     if (!alertId || !allDone || confirming) return;
@@ -306,7 +321,7 @@ export default function App() {
     );
   }
 
-  const { patientName, condition, eta, escalatedToNurse } = alert;
+  const { patientName, condition, eta, escalatedToNurse, bloodLoss, bloodGroup } = alert;
   const condColor = conditionColors[condition] || conditionColors.STABLE;
 
   return (
@@ -353,6 +368,31 @@ export default function App() {
           </div>
         )}
 
+        {/* Blood alert banner */}
+        {(bloodLoss === "Severe" || bloodLoss === "Moderate") && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 10,
+            background: bloodLoss === "Severe" ? C.criticalLight : C.seriousLight,
+            borderLeft: `4px solid ${bloodLoss === "Severe" ? C.critical : C.serious}`,
+            borderRadius: 10, padding: "12px 16px", marginBottom: 16
+          }}>
+            <Droplets size={16} color={bloodLoss === "Severe" ? C.critical : C.serious} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <span style={{
+                color: bloodLoss === "Severe" ? C.critical : C.serious,
+                fontWeight: 700, fontSize: 13, display: "block"
+              }}>
+                {bloodLoss === "Severe" ? "SEVERE" : "MODERATE"} BLOOD LOSS
+              </span>
+              {bloodGroup && bloodGroup !== "Unknown" && (
+                <span style={{ fontSize: 12, color: bloodLoss === "Severe" ? C.critical : C.serious }}>
+                  Blood group: <strong>{bloodGroup}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Patient card */}
         <div style={{
           background: C.bgCard, border: `1px solid ${C.border}`,
@@ -385,7 +425,7 @@ export default function App() {
           </h3>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {TASKS.map((task, idx) => {
+            {tasks.map((task, idx) => {
               const isChecked = checked[idx] === true;
               return (
                 <div
@@ -426,12 +466,12 @@ export default function App() {
           {/* Progress bar */}
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 11, color: C.textMuted, marginBottom: 6 }}>
-              {checkedCount} / {TASKS.length} tasks complete
+              {checkedCount} / {tasks.length} tasks complete
             </p>
             <div style={{ width: "100%", height: 6, borderRadius: 999, background: C.border, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 999, background: C.brand,
-                width: `${(checkedCount / TASKS.length) * 100}%`,
+                width: `${(checkedCount / tasks.length) * 100}%`,
                 transition: "width 0.3s ease"
               }} />
             </div>
@@ -471,7 +511,7 @@ export default function App() {
               ? "Confirming..."
               : allDone
                 ? "Confirm Ready"
-                : `Complete all tasks to confirm (${TASKS.length - checkedCount} remaining)`}
+                : `Complete all tasks to confirm (${tasks.length - checkedCount} remaining)`}
           </button>
         )}
       </div>

@@ -4,7 +4,7 @@ import { ref, onValue, update } from "firebase/database";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { HOSPITAL_ID } from "../../shared/types";
 import { API_BASE_URL } from "../../shared/config";
-import { Bed, Clock, CheckCircle, MapPin, LogOut, Shield, Wifi, Server, User, Activity } from "lucide-react";
+import { Bed, Clock, CheckCircle, MapPin, LogOut, Shield, Wifi, Server, User, Activity, Droplets } from "lucide-react";
 
 // Hardcoded palette (CSS vars may not load reliably at runtime)
 const C = {
@@ -574,6 +574,52 @@ export default function App() {
                 Prepare bed, trolley and monitoring equipment
               </p>
             </div>
+
+            {/* 2b — Blood info (if blood loss reported) */}
+            {alert.bloodLoss && alert.bloodLoss !== "None" && (
+              <div style={{
+                backgroundColor: alert.bloodLoss === "Severe" ? C.criticalLight : C.seriousLight,
+                border: `1px solid ${alert.bloodLoss === "Severe" ? C.critical : C.serious}`,
+                borderRadius: 10, padding: 16, marginBottom: 16,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <Droplets size={14} color={alert.bloodLoss === "Severe" ? C.critical : C.serious} />
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: alert.bloodLoss === "Severe" ? C.critical : C.serious,
+                  }}>
+                    Blood Loss Alert
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 13, color: C.textSecondary }}>Blood Loss</span>
+                  <span style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: alert.bloodLoss === "Severe" ? C.critical : C.serious,
+                  }}>
+                    {alert.bloodLoss}
+                  </span>
+                </div>
+                {alert.bloodGroup && alert.bloodGroup !== "Unknown" && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                    <span style={{ fontSize: 13, color: C.textSecondary }}>Blood Group</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace",
+                      background: C.brandLight, color: C.brand,
+                      padding: "2px 10px", borderRadius: 999,
+                    }}>
+                      {alert.bloodGroup}
+                    </span>
+                  </div>
+                )}
+                {alert.bloodLoss === "Severe" && (
+                  <p style={{ fontSize: 12, color: C.critical, marginTop: 8, fontWeight: 500 }}>
+                    Ensure blood bank is notified — check with nurse
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* 3 — Checklist */}
             <p style={{
