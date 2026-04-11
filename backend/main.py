@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import alert, patient, beds, setup, voice
+from routes import alert, patient, beds, setup, voice, bloodbank
 from firebase_client import get_ref
 import os
 from dotenv import load_dotenv
@@ -62,7 +62,8 @@ app.include_router(alert.router,   prefix="/api/alert")
 app.include_router(patient.router, prefix="/api/patient")
 app.include_router(beds.router,    prefix="/api/beds")
 app.include_router(setup.router,   prefix="/api/setup")
-app.include_router(voice.router,   prefix="/api/voice")
+app.include_router(voice.router,     prefix="/api/voice")
+app.include_router(bloodbank.router, prefix="/api/bloodbank")
 
 
 @app.get("/", tags=["root"])

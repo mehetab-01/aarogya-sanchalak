@@ -9,6 +9,7 @@ import ActiveAlerts from './components/ActiveAlerts.jsx';
 import StaffLog from './components/StaffLog.jsx';
 import SimulateFlow from './components/SimulateFlow.jsx';
 import Login from './components/Login.jsx';
+import BloodBankPanel from './components/BloodBankPanel.jsx';
 import { useAuth } from './hooks/useAuth.js';
 
 // ── Inline PortalLayout (avoids shared/ import crash when Firebase isn't set up) ──
@@ -139,7 +140,9 @@ function SectionLabel({ children }) {
 
 export default function AdminApp() {
   const { user, loading, logout } = useAuth();
-  const [criticalAlert, setCriticalAlert] = useState(null);
+  const [criticalAlert,  setCriticalAlert]  = useState(null);
+  const [activeAlert,    setActiveAlert]    = useState(null);
+  const [activeAlertId,  setActiveAlertId]  = useState(null);
 
   // Listen for critical incoming alerts for the banner
   // Wrapped in try/catch in case Firebase isn't configured yet
@@ -163,7 +166,15 @@ export default function AdminApp() {
               (priority[a.condition] ?? 3) - (priority[b.condition] ?? 3) ||
               (b.timestamp ?? 0) - (a.timestamp ?? 0)
             );
-          setCriticalAlert(incoming[0] ?? null);
+          const top = incoming[0] ?? null;
+          setCriticalAlert(top);
+          if (top) {
+            setActiveAlert(top);
+            setActiveAlertId(top.id);
+          } else {
+            setActiveAlert(null);
+            setActiveAlertId(null);
+          }
         });
       }).catch(() => {
         // Firebase not configured — silently handled by each component
@@ -220,6 +231,28 @@ export default function AdminApp() {
           <SectionLabel>Patient Alerts</SectionLabel>
           <ActiveAlerts />
         </section>
+
+        {/* ── Blood Bank ── */}
+        {activeAlert && (
+          activeAlert.condition === 'CRITICAL' ||
+          activeAlert.condition === 'SERIOUS'  ||
+          (activeAlert.bloodLoss && activeAlert.bloodLoss !== 'None')
+        ) && (
+          <section style={{ marginBottom: 24 }}>
+            <SectionLabel>Blood Bank</SectionLabel>
+            <div style={{
+              background: '#fff', border: '1px solid #D3D1C7',
+              borderRadius: 12, padding: 20,
+            }}>
+              <BloodBankPanel
+                alertId={activeAlertId}
+                condition={activeAlert.condition}
+                bloodLoss={activeAlert.bloodLoss ?? 'None'}
+                bloodGroup={activeAlert.bloodGroup ?? 'Unknown'}
+              />
+            </div>
+          </section>
+        )}
 
         {/* ── Staff Log ── */}
         <section>
