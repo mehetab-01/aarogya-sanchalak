@@ -29,6 +29,8 @@ class AlertPayload(BaseModel):
     eta: int            # minutes
     driverId: str
     notes: str = ""
+    bloodLoss: str = "None"    # None | Minor | Moderate | Severe
+    bloodGroup: str = "Unknown"  # A+ | A- | B+ | B- | AB+ | AB- | O+ | O-
 
 
 class AckPayload(BaseModel):
@@ -71,6 +73,26 @@ async def escalation_check(alertId: str, patientName: str):
 
 
 # ---------------------------------------------------------------------------
+# Blood bank auto-check background task
+# ---------------------------------------------------------------------------
+
+async def _auto_bloodbank_check(alert_id: str, condition: str, blood_group: str):
+    """Auto-trigger bloodbank check when moderate/severe blood loss is detected."""
+    try:
+        import httpx
+        await asyncio.sleep(2)  # brief delay so alert is fully written
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                "http://localhost:8000/api/bloodbank/check",
+                json={"alertId": alert_id, "condition": condition, "bloodGroup": blood_group},
+                timeout=10,
+            )
+        log(f"[BLOODBANK] Auto-check triggered for {alert_id} ({condition}, {blood_group})")
+    except Exception as e:
+        log(f"[BLOODBANK] Auto-check failed for {alert_id}: {e}")
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -94,6 +116,8 @@ async def trigger_alert(payload: AlertPayload, background_tasks: BackgroundTasks
             "eta":                payload.eta,
             "driverId":           payload.driverId,
             "notes":              payload.notes,
+            "bloodLoss":          payload.bloodLoss,
+            "bloodGroup":         payload.bloodGroup,
             "status":             "INCOMING",
             "doctorAck":          False,
             "nurseAck":           False,
@@ -102,6 +126,10 @@ async def trigger_alert(payload: AlertPayload, background_tasks: BackgroundTasks
             "escalationStartedAt": now_ms,
             "timestamp":           now_ms,
         })
+
+        # Auto-trigger blood bank check for moderate/severe blood loss
+        if payload.bloodLoss in ("Moderate", "Severe") and payload.condition in ("CRITICAL", "SERIOUS"):
+            background_tasks.add_task(_auto_bloodbank_check, alertId, payload.condition, payload.bloodGroup)
 
         # Increment emergency occupied count
         bed_ref  = get_ref(f"/hospitals/{HOSPITAL_ID}/beds/emergency")
