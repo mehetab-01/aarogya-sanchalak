@@ -128,6 +128,30 @@ export default function Confirmation({ alertId, patientData, onNewAlert }) {
 
       <div className="flex-1 p-5 space-y-5">
         
+        {/* Navigating to hospital banner */}
+        <div style={{
+          background: 'var(--color-critical)', borderRadius: 10, padding: '14px 16px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Truck size={20} color="#fff" />
+          </div>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+              Navigating to
+            </p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.3 }}>
+              {patientData?.hospitalName || data.hospitalName || 'City General Hospital'}
+            </p>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', margin: 0 }}>
+              Emergency Bay · {data.eta ? `ETA ${data.eta} min` : 'En route'}
+            </p>
+          </div>
+        </div>
+
         {/* Big confirmation icon + heading */}
         <div className="text-center py-2 animate-slide-up">
           <div className={clsx(
@@ -149,7 +173,7 @@ export default function Confirmation({ alertId, patientData, onNewAlert }) {
             }
           </p>
           <div className="font-data text-[var(--font-sm)] text-[var(--color-text-muted)] mt-2">
-            AMB-042 · {formatElapsed(elapsed)}
+            {data.driverId || 'AMB-001'} · {formatElapsed(elapsed)}
           </div>
         </div>
 
